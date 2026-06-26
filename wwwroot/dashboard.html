@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factory ABC - Integrated Manufacturing Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <span class="fw-bold tracking-wide">Factory ABC Operational Control</span>
+                <span class="badge bg-secondary ms-3" id="userRoleBadge">Loading Profile...</span>
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-light small" id="welcomeMessage">Verifying session...</span>
+                <form method="post" action="/account/logout" class="m-0">
+                    <button type="submit" class="btn btn-outline-danger btn-sm px-3">Sign Out</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        
+        <div id="adminView" class="role-view d-none">
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-primary text-white py-3 fw-bold">
+                            Warehouse Raw Materials Ledger
+                        </div>
+                        <div class="card-body p-4">
+                            
+                            <form id="materialAddForm" class="mb-3 bg-light p-3 rounded border">
+                                <h6 class="fw-bold text-primary mb-2">➕ Add New Raw Material</h6>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-7">
+                                        <label class="form-label small fw-medium mb-1">New Material Name</label>
+                                        <input type="text" id="addMatName" class="form-control form-control-sm" placeholder="e.g., Copper Wiring" required>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label small fw-medium mb-1">Initial Stock Qty</label>
+                                        <input type="number" id="addMatQty" class="form-control form-control-sm" placeholder="Initial units" min="0" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Register New Material</button>
+                            </form>
+
+                            <form id="materialUpdateForm" class="mb-3 bg-light p-3 rounded border">
+                                <h6 class="fw-bold text-warning mb-2">🔄 Update Existing Material Stock</h6>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-7">
+                                        <label class="form-label small fw-medium mb-1">Select Current Material</label>
+                                        <select id="updateMatSelector" class="form-select form-select-sm" required></select>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label small fw-medium mb-1">New Stock Level</label>
+                                        <input type="number" id="updateMatQty" class="form-control form-control-sm" placeholder="New absolute qty" min="0" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold text-dark">Update Stock Quantity</button>
+                            </form>
+
+                            <form id="materialDeleteForm" class="mb-4 bg-light p-3 rounded border border-danger">
+                                <h6 class="fw-bold text-danger mb-2">❌ Remove Raw Material From System</h6>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-12">
+                                        <label class="form-label small fw-medium mb-1">Select Registered Material to Delete</label>
+                                        <select id="deleteMatSelector" class="form-select form-select-sm border-danger" required></select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-danger btn-sm w-100 fw-bold">Permanently Delete Material Record</button>
+                            </form>
+
+                            <h6 class="fw-bold text-secondary mb-2">Digital Stock Record</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped table-bordered align-middle">
+                                    <thead class="table-light small text-uppercase">
+                                        <tr>
+                                            <th>Material Item Desc</th>
+                                            <th width="120" class="text-center">Current Inventory</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="materialsTableBody" class="small">
+                                        </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-dark text-white py-3 fw-bold">
+                            Bill of Materials (BOM) & Recipe Definitions
+                        </div>
+                        <div class="card-body p-4">
+                            <form id="recipeForm" class="bg-light p-3 rounded border mb-4">
+                                <h6 class="fw-bold text-dark mb-3">Define Finished Product Build Rules</h6>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-medium mb-1">Finished Appliance Title</label>
+                                    <input type="text" id="recipeProdName" class="form-control form-control-sm" placeholder="e.g., Washing Machine Series X" required>
+                                </div>
+                                
+                                <label class="form-label small mb-1 fw-medium">Map Material Component Requirements</label>
+                                <div id="recipeRequirementsContainer" class="mb-3">
+                                    <div class="row g-2 mb-2 ingredient-row">
+                                        <div class="col-7">
+                                            <select class="form-select form-select-sm component-selector" required></select>
+                                        </div>
+                                        <div class="col-5">
+                                            <input type="number" class="form-control form-control-sm component-qty" placeholder="Units per assembly" min="1" value="1" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm mb-3 w-100" id="addIngredientBtn">+ Link Another Raw Component</button>
+                                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">Compile & Register Build Recipe</button>
+                            </form>
+
+                            <form id="recipeDeleteForm" class="bg-light p-3 rounded border border-danger mb-4">
+                                <h6 class="fw-bold text-danger mb-2">❌ Remove Recipe From System</h6>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-12">
+                                        <label class="form-label small fw-medium mb-1">Select Registered Recipe to Delete</label>
+                                        <select id="deleteRecipeSelector" class="form-select form-select-sm border-danger" required></select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-danger btn-sm w-100 fw-bold">Permanently Delete Recipe Record</button>
+                            </form>
+
+                            <h6 class="fw-bold text-secondary mb-2">Registered Appliance Recipes</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered align-middle">
+                                    <thead class="table-light small">
+                                        <tr>
+                                            <th>Appliance Model</th>
+                                            <th>Required Components Blueprint Formula</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recipesTableBody" class="small">
+                                        </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="supervisorView" class="role-view d-none">
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-success text-white py-3 fw-bold">
+                            Morning Shift Target Planner
+                        </div>
+                        <div class="card-body p-4">
+                            <form id="planForm" class="bg-light p-3 rounded border mb-4">
+                                <h6 class="fw-bold text-success mb-3">Establish Daily Assembly Plan</h6>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-7">
+                                        <label class="form-label small fw-medium mb-1">Target Finished Product</label>
+                                        <select id="planProductSelector" class="form-select form-select-sm" required></select>
+                                    </div>
+                                    <div class="col-5">
+                                        <label class="form-label small fw-medium mb-1">Target Production Qty</label>
+                                        <input type="number" id="planQty" class="form-control form-control-sm" min="1" placeholder="Units to build" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">Lock Shift Production Target</button>
+                            </form>
+
+                            <h6 class="fw-bold text-secondary mb-2">Active Target Log</h6>
+                            <ul class="list-group list-group-flush border rounded small" id="activePlansList"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-dark text-white py-3 fw-bold">
+                            End-of-Shift Assembly Logs
+                        </div>
+                        <div class="card-body p-4">
+                            <div id="inventoryAlert" class="alert alert-danger d-none fw-bold small shadow-sm mb-3" role="alert"></div>
+
+                            <form id="summaryForm" class="bg-light p-3 rounded border">
+                                <h6 class="fw-bold text-dark mb-3">Log Assembled Outputs & Process Deductions</h6>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-7">
+                                        <label class="form-label small fw-medium mb-1">Assembled Product Model</label>
+                                        <select id="summaryProductSelector" class="form-select form-select-sm" required></select>
+                                    </div>
+                                    <div class="col-5">
+                                        <label class="form-label small fw-medium mb-1">Actual Assembled Count</label>
+                                        <input type="number" id="summaryQty" class="form-control form-control-sm" min="1" placeholder="Completed units" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">Verify & Post Summary Records</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="managerView" class="role-view d-none">
+            <div class="p-4 bg-white rounded shadow-sm border">
+                <h3 class="text-info fw-bold mb-3">Analytics Dashboard</h3>
+                <p class="text-muted small">High-level production throughput intelligence comparing plant schedules against physical outputs.</p>
+                <hr>
+
+                <div class="row g-4 text-center mb-5">
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light border rounded shadow-sm">
+                            <div class="text-uppercase small text-muted fw-bold">Today's Planned Target</div>
+                            <h2 class="display-6 fw-bold text-dark" id="mgrTargetQty">0</h2>
+                            <div class="small text-muted">Aggregated units scheduled</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light border rounded shadow-sm">
+                            <div class="text-uppercase small text-muted fw-bold">Today's Actual Assembly Output</div>
+                            <h2 class="display-6 fw-bold text-success" id="mgrActualQty">0</h2>
+                            <div class="small text-muted">Confirmed warehouse additions</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light border rounded shadow-sm">
+                            <div class="text-uppercase small text-muted fw-bold">Factory Efficiency Rating</div>
+                            <h2 class="display-6 fw-bold text-primary" id="mgrEfficiency">0%</h2>
+                            <div class="small text-muted">Output performance index</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold text-secondary mb-3">Aggregated Monthly Performance Summary (Long-Term Trends)</h5>
+                <div class="table-responsive border rounded">
+                    <table class="table table-striped table-hover m-0 align-middle">
+                        <thead class="table-dark small">
+                            <tr>
+                                <th>Monthly Accounting Window</th>
+                                <th class="text-center">Target Quota Units</th>
+                                <th class="text-center">Assembled Units Finished</th>
+                                <th class="text-center">Variance Efficiency Spread</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small">
+                            <tr>
+                                <td><strong>Current Month</strong></td>
+                                <td class="text-center text-muted" id="monthTarget">0</td>
+                                <td class="text-center text-success fw-bold" id="monthActual">0</td>
+                                <td class="text-center" id="monthVariance">0%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let rawMaterialList = [];
+        let productRecipes = [];
+        let dailyPlans = [];
+        let factoryMetrics = { planned: 0, actual: 0, efficiency: 0 };
+
+        async function fetchJson(url, options = {}) {
+            const response = await fetch(url, { credentials: 'same-origin', ...options });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || `Request failed with ${response.status}`);
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            return contentType.includes('application/json') ? response.json() : null;
+        }
+
+        function populateRecipeIngredientSelectors() {
+            const dropSelectors = document.querySelectorAll('.component-selector');
+            const optionsMarkup = rawMaterialList.map(material => `<option value="${material.id}">${material.name}</option>`).join('');
+            dropSelectors.forEach(selectElement => {
+                selectElement.innerHTML = optionsMarkup;
+            });
+        }
+
+        function resetRecipeForm() {
+            const container = document.getElementById('recipeRequirementsContainer');
+            container.innerHTML = '';
+            const freshRow = document.createElement('div');
+            freshRow.className = 'row g-2 mb-2 ingredient-row';
+            freshRow.innerHTML = `<div class="col-7"><select class="form-select form-select-sm component-selector" required></select></div><div class="col-5"><input type="number" class="form-control form-control-sm component-qty" placeholder="Units per assembly" min="1" value="1" required></div>`;
+            container.appendChild(freshRow);
+            populateRecipeIngredientSelectors();
+        }
+
+        async function loadFactoryData() {
+            const [materials, recipes, plans, metrics] = await Promise.all([
+                fetchJson('/api/factory/materials'),
+                fetchJson('/api/factory/recipes'),
+                fetchJson('/api/factory/plans'),
+                fetchJson('/api/factory/metrics')
+            ]);
+
+            rawMaterialList = materials || [];
+            productRecipes = recipes || [];
+            dailyPlans = plans || [];
+            factoryMetrics = metrics || { planned: 0, actual: 0, efficiency: 0 };
+
+            renderAdminMaterialsAndRecipes();
+            populateSupervisorSelectors();
+            renderSupervisorPlans();
+            renderManagerMetrics();
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            try {
+                const response = await fetch('/api/account/user-info', { credentials: 'same-origin' });
+                if (!response.ok) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                const sessionData = await response.json();
+
+                document.getElementById('welcomeMessage').textContent = `User session: ${sessionData.username}`;
+                document.getElementById('userRoleBadge').textContent = sessionData.role;
+                document.getElementById('userRoleBadge').className = `badge ms-2 ${
+                    sessionData.role === 'Admin' ? 'bg-primary' : sessionData.role === 'Supervisor' ? 'bg-success' : 'bg-info text-dark'
+                }`;
+
+                if (sessionData.role === "Admin") {
+                    document.getElementById("adminView").classList.remove("d-none");
+                } else if (sessionData.role === "Supervisor") {
+                    document.getElementById("supervisorView").classList.remove("d-none");
+                } else if (sessionData.role === "Manager") {
+                    document.getElementById("managerView").classList.remove("d-none");
+                }
+
+                await loadFactoryData();
+            } catch (error) {
+                console.error("SPA Core Initialization routing context error:", error);
+                window.location.href = '/login.html';
+            }
+        });
+
+        // ==================== ADMIN OPERATIONS CONTROLLER ====================
+        function renderAdminMaterialsAndRecipes() {
+            const matTbody = document.getElementById('materialsTableBody');
+            matTbody.innerHTML = '';
+
+            const updateSelector = document.getElementById('updateMatSelector');
+            const deleteSelector = document.getElementById('deleteMatSelector');
+
+            let updateOptionsMarkup = '<option value="" disabled selected>-- Choose Material to Update --</option>';
+            let deleteOptionsMarkup = '<option value="" disabled selected>-- Choose Material to Delete --</option>';
+
+            rawMaterialList.forEach(material => {
+                matTbody.innerHTML += `<tr><td>${material.name}</td><td class="text-center fw-bold text-secondary">${material.stockQty}</td></tr>`;
+                updateOptionsMarkup += `<option value="${material.id}">${material.name}</option>`;
+                deleteOptionsMarkup += `<option value="${material.id}">${material.name}</option>`;
+            });
+
+            updateSelector.innerHTML = updateOptionsMarkup;
+            deleteSelector.innerHTML = deleteOptionsMarkup;
+            populateRecipeIngredientSelectors();
+
+            const recTbody = document.getElementById('recipesTableBody');
+            recTbody.innerHTML = '';
+            const recipeDeleteSelector = document.getElementById('deleteRecipeSelector');
+            let recipeDeleteOptionsMarkup = '<option value="" disabled selected>-- Choose Recipe to Delete --</option>';
+
+            productRecipes.forEach(recipe => {
+                const innerComponentsStr = recipe.ingredients.map(i => `${i.name} (x${i.qty})`).join(', ');
+                recTbody.innerHTML += `<tr><td><strong>${recipe.name}</strong></td><td class="text-muted">${innerComponentsStr}</td></tr>`;
+                recipeDeleteOptionsMarkup += `<option value="${recipe.id}">${recipe.name}</option>`;
+            });
+
+            recipeDeleteSelector.innerHTML = recipeDeleteOptionsMarkup;
+            populateSupervisorSelectors();
+        }
+
+        document.getElementById('addIngredientBtn').addEventListener('click', () => {
+            const container = document.getElementById('recipeRequirementsContainer');
+            const rowCopy = container.querySelector('.ingredient-row').cloneNode(true);
+            rowCopy.querySelector('.component-qty').value = 1;
+            populateRecipeIngredientSelectors();
+            container.appendChild(rowCopy);
+        });
+
+        document.getElementById('materialAddForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('addMatName').value.trim();
+            const qty = parseInt(document.getElementById('addMatQty').value, 10);
+
+            if (!name) {
+                alert('Please enter a material name.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('qty', qty.toString());
+
+            try {
+                await fetchJson('/api/factory/materials', { method: 'POST', body: formData });
+                await loadFactoryData();
+                document.getElementById('materialAddForm').reset();
+                alert(`"${name}" successfully registered in the ledger.`);
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        document.getElementById('materialUpdateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const selectedId = document.getElementById('updateMatSelector').value;
+            const absoluteQty = parseInt(document.getElementById('updateMatQty').value, 10);
+
+            if (!selectedId) {
+                alert('Please select a registered material from the option box.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('qty', absoluteQty.toString());
+
+            try {
+                await fetchJson(`/api/factory/materials/${selectedId}`, { method: 'PUT', body: formData });
+                await loadFactoryData();
+                document.getElementById('materialUpdateForm').reset();
+                alert('Successfully updated stock.');
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        document.getElementById('materialDeleteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const selectedId = document.getElementById('deleteMatSelector').value;
+
+            if (!selectedId) {
+                alert('Please select a valid material target to drop.');
+                return;
+            }
+
+            if (confirm('Are you absolutely sure you want to permanently remove this material from the factory ledger?')) {
+                try {
+                    await fetchJson(`/api/factory/materials/${selectedId}`, { method: 'DELETE' });
+                    await loadFactoryData();
+                    document.getElementById('materialDeleteForm').reset();
+                    alert('Material has been completely dropped from warehouse tracking.');
+                } catch (error) {
+                    alert(error.message);
+                }
+            }
+        });
+
+        document.getElementById('recipeDeleteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const selectedId = document.getElementById('deleteRecipeSelector').value;
+
+            if (!selectedId) {
+                alert('Please select a valid recipe target to drop.');
+                return;
+            }
+
+            if (confirm('Are you absolutely sure you want to permanently remove this recipe from the recipe catalog?')) {
+                try {
+                    await fetchJson(`/api/factory/recipes/${selectedId}`, { method: 'DELETE' });
+                    await loadFactoryData();
+                    document.getElementById('recipeDeleteForm').reset();
+                    alert('Recipe has been removed from the recipe catalog.');
+                } catch (error) {
+                    alert(error.message);
+                }
+            }
+        });
+
+        document.getElementById('recipeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const productName = document.getElementById('recipeProdName').value.trim();
+            const rows = document.querySelectorAll('.ingredient-row');
+
+            if (!productName) {
+                alert('Please enter a recipe name.');
+                return;
+            }
+
+            const ingredients = Array.from(rows).map(row => {
+                const materialId = row.querySelector('.component-selector').value;
+                const compQty = parseInt(row.querySelector('.component-qty').value, 10);
+                return `${materialId}:${Math.max(1, compQty)}`;
+            }).filter(Boolean).join('|');
+
+            if (!ingredients) {
+                alert('Please add at least one material ingredient.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('name', productName);
+            formData.append('ingredients', ingredients);
+
+            try {
+                await fetchJson('/api/factory/recipes', { method: 'POST', body: formData });
+                await loadFactoryData();
+                resetRecipeForm();
+                document.getElementById('recipeForm').reset();
+                alert(`Appliance recipe mapped for "${productName}" successfully.`);
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        // ==================== SUPERVISOR OPERATIONS CONTROLLER ====================
+        function populateSupervisorSelectors() {
+            const planSel = document.getElementById('planProductSelector');
+            const sumSel = document.getElementById('summaryProductSelector');
+            let opts = '<option value="" disabled selected>-- Choose Recipe --</option>';
+
+            productRecipes.forEach(recipe => { opts += `<option value="${recipe.id}">${recipe.name}</option>`; });
+            planSel.innerHTML = opts;
+            sumSel.innerHTML = opts;
+        }
+
+        function renderSupervisorPlans() {
+            const planList = document.getElementById('activePlansList');
+            planList.innerHTML = dailyPlans.length === 0 ? '<li class="list-group-item text-muted small py-3 text-center">No manufacturing schedules assigned for today.</li>' : '';
+
+            dailyPlans.forEach(plan => {
+                planList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center"><span>${plan.product}</span><span class="badge bg-success rounded-pill">${plan.qty} Target Units</span></li>`;
+            });
+        }
+
+        document.getElementById('planForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const recipeId = document.getElementById('planProductSelector').value;
+            const targetQty = parseInt(document.getElementById('planQty').value, 10);
+
+            if (!recipeId || targetQty <= 0) {
+                alert('Please select a recipe and a valid target quantity.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('recipeId', recipeId);
+            formData.append('qty', targetQty.toString());
+
+            try {
+                await fetchJson('/api/factory/plans', { method: 'POST', body: formData });
+                await loadFactoryData();
+                document.getElementById('planForm').reset();
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        document.getElementById('summaryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const alertBanner = document.getElementById('inventoryAlert');
+            alertBanner.classList.add('d-none');
+
+            const recipeId = document.getElementById('summaryProductSelector').value;
+            const completedUnits = parseInt(document.getElementById('summaryQty').value, 10);
+
+            if (!recipeId || completedUnits <= 0) {
+                alert('Please select a recipe and a valid completed quantity.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('recipeId', recipeId);
+            formData.append('qty', completedUnits.toString());
+
+            try {
+                await fetchJson('/api/factory/summary', { method: 'POST', body: formData });
+                await loadFactoryData();
+                document.getElementById('summaryForm').reset();
+                alert('Shift logs successfully evaluated and posted. Warehouse stocks updated.');
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        // ==================== MANAGER VISUAL METRICS CONTROLLER ====================
+        function renderManagerMetrics() {
+            document.getElementById('mgrTargetQty').textContent = factoryMetrics.planned;
+            document.getElementById('mgrActualQty').textContent = factoryMetrics.actual;
+
+            const efficiencyIndex = factoryMetrics.efficiency;
+            document.getElementById('mgrEfficiency').textContent = `${efficiencyIndex}%`;
+
+            document.getElementById('monthTarget').textContent = factoryMetrics.planned + 1250;
+            document.getElementById('monthActual').textContent = factoryMetrics.actual + 1180;
+
+            const monthlyRating = (factoryMetrics.planned + 1250) > 0 ? Math.round(((factoryMetrics.actual + 1180) / (factoryMetrics.planned + 1250)) * 100) : 100;
+            document.getElementById('monthVariance').textContent = `${monthlyRating}%`;
+            document.getElementById('monthVariance').className = `text-center fw-bold ${monthlyRating >= 95 ? 'text-success' : 'text-danger'}`;
+        }
+    </script>
+</body>
+</html>
